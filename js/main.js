@@ -395,6 +395,6 @@ window.addEventListener('keydown', e => {
   }
 });
 
-var game = new Game(7, 5, 10);
+var game = new Game(7, 5, 8);
 var head = new Head;
 var apple = new Apple(3, 0, 0);
