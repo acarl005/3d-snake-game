@@ -76,6 +76,47 @@ class Game {
     ]);
   }
 
+  clearGlass() {
+    this.xGlass && this.scene.remove(this.xGlass);
+    this.yGlass && this.scene.remove(this.yGlass);
+    this.zGlass && this.scene.remove(this.zGlass);
+  }
+
+  drawGlass(borders) {
+    var material = new THREE.MeshBasicMaterial({ 
+      color: 'white', 
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.2
+    });
+    if (borders.x !== undefined) {
+      var geometry = new THREE.PlaneGeometry(this.zLimit, this.yLimit);
+      this.xGlass = new THREE.Mesh(geometry, material);
+      this.xGlass.rotation.y = 90 * Math.PI / 180;
+      this.xGlass.position.y = this.yLimit / 2;
+      this.xGlass.position.z = -1 * this.zLimit / 2;
+      this.xGlass.position.x = borders.x;
+      this.scene.add(this.xGlass);
+    }
+    if (borders.y !== undefined) {
+      var geometry = new THREE.PlaneGeometry(this.xLimit, this.zLimit);
+      this.yGlass = new THREE.Mesh(geometry, material);
+      this.yGlass.rotation.x = 90 * Math.PI / 180;
+      this.yGlass.position.y = borders.y;
+      this.yGlass.position.z = -1 * this.zLimit / 2;
+      this.yGlass.position.x = this.xLimit / 2;
+      this.scene.add(this.yGlass);
+    }
+    if (borders.z !== undefined) {
+      var geometry = new THREE.PlaneGeometry(this.xLimit, this.yLimit);
+      this.zGlass = new THREE.Mesh(geometry, material);
+      this.zGlass.position.z = borders.z;
+      this.zGlass.position.y = this.yLimit / 2;
+      this.zGlass.position.x = this.xLimit / 2;
+      this.scene.add(this.zGlass);
+    }
+  }
+
   switchOnLights() {
     var ambientLight = new THREE.AmbientLight(0x000000);
     this.scene.add(ambientLight);
@@ -111,27 +152,13 @@ class Game {
 
 
 
-var cubeMaterials = ['#0000FF', '#0033CC', '#0066FF', 
-                     '#3399FF', '#00CCFF', '#3366CC']
-                    .map(color => {
-                      return new THREE.MeshBasicMaterial({ 
-                        color, 
-                        transparent:true, 
-                        opacity:0.6, 
-                        side: THREE.DoubleSide
-                      });
-                    });
-
-var cubeGeo = new THREE.BoxGeometry(1, 1, 1);  // length, width, height
-var bodyMaterial = new THREE.MeshFaceMaterial(cubeMaterials);
-var headMaterial = new THREE.MeshNormalMaterial;
-
-var sphereGeo = new THREE.SphereGeometry(0.5, 32, 32);
-var appleMaterial = new THREE.MeshLambertMaterial({ color: 'red' });
-
 
 
 class Shape {
+
+  constructor() {
+    this.shape = new THREE.Mesh(this.geometry, this.material);
+  }
 
   get x() { return this.shape.position.x; }
   get y() { return this.shape.position.y; }
@@ -146,13 +173,27 @@ class Shape {
            this.z === obj.z; 
   }
 
-  outside() {
+  isOutside() {
     return this.x > game.xLimit ||
            this.x < 0 ||
            this.y > game.yLimit ||
            this.y < 0 ||
            this.z < -1 * game.zLimit ||
            this.z > 0;
+  }
+
+  onBorder() {
+    var borders = {};
+    if (this.x === 0 || this.x === game.xLimit)
+      borders.x = this.x;
+    if (this.y === 0 || this.y === game.yLimit)
+      borders.y = this.y;
+    if (this.z === 0 || this.z === -1 * game.zLimit)
+      borders.z = this.z;
+    if (Object.keys(borders).length)
+      return borders;
+    else
+      return false;
   }
 
   setPos(x, y, z) {
@@ -168,7 +209,6 @@ class Head extends Shape {
   constructor() {
     super();
     this.score = 0;
-    this.shape = new THREE.Mesh(cubeGeo, headMaterial);
     game.scene.add(this.shape);
     this.direction = 'right';
     this.SPEED = 500;
@@ -189,7 +229,10 @@ class Head extends Shape {
     }
 
     this.moveBody(x, y, z);
-    if (this.outside()) game.kill();
+    this.isOutside() && game.kill();
+    game.clearGlass();
+    var touchingBorders = this.onBorder();
+    touchingBorders && game.drawGlass(touchingBorders);
     apple.checkIfEaten();
     this.checkBody();
     this.ps = setTimeout(this.move.bind(this), this.SPEED);
@@ -235,20 +278,38 @@ class Head extends Shape {
 
 }
 
+Head.prototype.material = new THREE.MeshNormalMaterial;
+Head.prototype.geometry = new THREE.BoxGeometry(1, 1, 1);
+
+
 class Body extends Shape {
   constructor() {
     super();
-    this.shape = new THREE.Mesh(cubeGeo, bodyMaterial);
+    this.shape = new THREE.Mesh(this.geometry, this.material);
     this.next = null;
   }
 }
+
+
+var cubeMaterials = ['#0000FF', '#0033CC', '#0066FF', 
+                     '#3399FF', '#00CCFF', '#3366CC']
+                    .map(color => {
+                      return new THREE.MeshBasicMaterial({ 
+                        color, 
+                        transparent:true, 
+                        opacity:0.6, 
+                        side: THREE.DoubleSide
+                      });
+                    });
+
+Body.prototype.material = new THREE.MeshFaceMaterial(cubeMaterials);
+Body.prototype.geometry = new THREE.BoxGeometry(1, 1, 1);
 
 
 class Apple extends Shape {
 
   constructor(x, y, z) {
     super();
-    this.shape = new THREE.Mesh(sphereGeo, appleMaterial);
     game.scene.add(this.shape);
     this.x = (x === undefined ? Math.floor(Math.random() * (game.xLimit + 1)) : x);
     this.y = (y === undefined ? Math.floor(Math.random() * (game.yLimit + 1)) : y);
@@ -271,6 +332,7 @@ class Apple extends Shape {
   removeCalibration() {
     game.scene.remove(this.zCalibLine);
     game.scene.remove(this.xCalibLine);
+    game.scene.remove(this.calibPlane);
   }
 
   drawCalibration() {
@@ -293,11 +355,29 @@ class Apple extends Shape {
     ];
     this.xCalibLine = new THREE.Line(lineGeo, lineMaterial);
     game.scene.add(this.xCalibLine);
+
+    var geometry = new THREE.PlaneGeometry(1, 1);
+    var material = new THREE.MeshBasicMaterial({ 
+      color: 'red', 
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.2 
+    });
+    this.calibPlane = new THREE.Mesh(geometry, material);
+    this.calibPlane.position.x = this.x;
+    this.calibPlane.position.y = this.y;
+    game.scene.add(this.calibPlane);
   }
 
 }
 
-$(window).on('keydown', e => {
+Apple.prototype.geometry = new THREE.SphereGeometry(0.5, 32, 32);
+Apple.prototype.material = new THREE.MeshLambertMaterial({ color: 'red' });
+
+
+
+
+window.addEventListener('keydown', e => {
   if (e.keyCode === 37 && head.direction !== 'right') {
     head.direction = 'left';
   } else if (e.keyCode === 38 && head.direction !== 'backward') {
