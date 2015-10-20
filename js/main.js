@@ -1,23 +1,123 @@
 'use strict';
 
-var scene = new THREE.Scene;
-var camera = new THREE.PerspectiveCamera(
-  30,                          // field of view
-  innerWidth / innerHeight,    // aspect ratio
-  0.1,                         // near clipping pane
-  1000                         // far clipping pane
-);
-var renderer = new THREE.WebGLRenderer;
+class Game {
 
-renderer.setSize(innerWidth, innerHeight);
-document.getElementById('content').appendChild(renderer.domElement);
+  constructor(x, y, z) {
+    this.xLimit = x;
+    this.yLimit = y;
+    this.zLimit = z;
+    this.scene = new THREE.Scene;
+    this.camera = new THREE.PerspectiveCamera(
+      30,                          // field of view
+      innerWidth / innerHeight,    // aspect ratio
+      0.1,                         // near clipping pane
+      1000                         // far clipping pane
+    );
+    this.renderer = new THREE.WebGLRenderer;
+    this.renderer.setSize(innerWidth, innerHeight);
+    document.getElementById('content').appendChild(this.renderer.domElement);
+    this.aimCamera();
+    this.drawBorders();
+    this.switchOnLights();
+    this.render();
+  }
 
-var cubeMaterials = ['#0000FF', '#0033CC', '#0066FF', '#3399FF', '#00CCFF', '#3366CC']
+
+  aimCamera() {
+    this.camera.position.z = 15;
+    this.camera.position.y = 6;
+    this.camera.position.x = 6;
+    this.camera.rotateX(-0.15);
+    this.camera.rotateY(0.15);
+  }
+
+
+  drawBorders() {
+
+    var drawLines = vectors => {
+      var lineMaterial = new THREE.LineBasicMaterial({
+        color: '#ffffff'
+      });
+      var lineGeo = new THREE.Geometry();
+      lineGeo.vertices = vectors;
+      var line = new THREE.Line(lineGeo, lineMaterial);
+      this.scene.add(line);
+    };
+
+    drawLines([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(this.xLimit, 0, 0),
+      new THREE.Vector3(this.xLimit, 0, -1 * this.zLimit),
+      new THREE.Vector3(0, 0, -1 * this.zLimit),
+      new THREE.Vector3(0, 0, 0)
+    ]);
+    drawLines([
+      new THREE.Vector3(0, this.yLimit, 0),
+      new THREE.Vector3(this.xLimit, this.yLimit, 0),
+      new THREE.Vector3(this.xLimit, this.yLimit, -1 * this.zLimit),
+      new THREE.Vector3(0, this.yLimit, -1 * this.zLimit),
+      new THREE.Vector3(0, this.yLimit, 0)
+    ]);
+    drawLines([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, this.yLimit, 0),
+    ]);
+    drawLines([
+      new THREE.Vector3(this.xLimit, 0, 0),
+      new THREE.Vector3(this.xLimit, this.yLimit, 0),
+    ]);
+    drawLines([
+      new THREE.Vector3(0, 0, -1 * this.zLimit),
+      new THREE.Vector3(0, this.yLimit, -1 * this.zLimit),
+    ]);
+    drawLines([
+      new THREE.Vector3(this.xLimit, 0, -1 * this.zLimit),
+      new THREE.Vector3(this.xLimit, this.yLimit, -1 * this.zLimit),
+    ]);
+  }
+
+  switchOnLights() {
+    var ambientLight = new THREE.AmbientLight(0x000000);
+    this.scene.add(ambientLight);
+
+    var lights = [];
+    lights[0] = new THREE.PointLight(0xffffff, 1, 0);
+    lights[1] = new THREE.PointLight(0xffffff, 1, 0);
+    lights[2] = new THREE.PointLight(0xffffff, 1, 0);
+
+    lights[0].position.set(0, 200, 0);
+    lights[1].position.set(100, 200, 100);
+    lights[2].position.set(-100, -200, -100);
+
+    this.scene.add(lights[0]);
+    this.scene.add(lights[1]);
+    this.scene.add(lights[2]);
+  }
+
+
+  render() {
+    requestAnimationFrame(this.render.bind(this));
+    this.renderer.render(this.scene, this.camera);
+  }
+
+
+  kill() {
+    this.renderer.render(this.scene, this.camera);
+    alert('You died...');
+    location.reload();
+  }
+  
+}
+
+
+
+var cubeMaterials = ['#0000FF', '#0033CC', '#0066FF', 
+                     '#3399FF', '#00CCFF', '#3366CC']
                     .map(color => {
                       return new THREE.MeshBasicMaterial({ 
                         color, 
                         transparent:true, 
-                        opacity:0.8, 
+                        opacity:0.6, 
                         side: THREE.DoubleSide
                       });
                     });
@@ -29,43 +129,6 @@ var headMaterial = new THREE.MeshNormalMaterial;
 var sphereGeo = new THREE.SphereGeometry(0.5, 32, 32);
 var appleMaterial = new THREE.MeshLambertMaterial({ color: 'red' });
 
-var ambientLight = new THREE.AmbientLight( 0x000000 );
-scene.add(ambientLight);
-
-var lights = [];
-lights[0] = new THREE.PointLight(0xffffff, 1, 0);
-lights[1] = new THREE.PointLight(0xffffff, 1, 0);
-lights[2] = new THREE.PointLight(0xffffff, 1, 0);
-
-lights[0].position.set(0, 200, 0);
-lights[1].position.set(100, 200, 100);
-lights[2].position.set(-100, -200, -100);
-
-scene.add(lights[0]);
-scene.add(lights[1]);
-scene.add(lights[2]);
-
-camera.position.z = 15;
-camera.position.y = 6;
-camera.position.x = 6;
-camera.rotateX(-0.15);
-camera.rotateY(0.15);
-
-function render() {
-  requestAnimationFrame(render);
-  renderer.render(scene, camera);
-}
-render();
-
-var xLimit = 7;
-var yLimit = 5;
-var zLimit = 10;
-
-function kill() {
-  renderer.render(scene, camera);
-  alert('You died...');
-  location.reload();
-}
 
 
 class Shape {
@@ -84,11 +147,11 @@ class Shape {
   }
 
   outside() {
-    return this.x > xLimit ||
+    return this.x > game.xLimit ||
            this.x < 0 ||
-           this.y > yLimit ||
+           this.y > game.yLimit ||
            this.y < 0 ||
-           this.z < -1 * zLimit ||
+           this.z < -1 * game.zLimit ||
            this.z > 0;
   }
 
@@ -104,13 +167,14 @@ class Head extends Shape {
 
   constructor() {
     super();
+    this.score = 0;
     this.shape = new THREE.Mesh(cubeGeo, headMaterial);
-    scene.add(this.shape);
+    game.scene.add(this.shape);
     this.direction = 'right';
     this.SPEED = 500;
     this.next = null;
     this.tail = this;
-    setTimeout(this.move.bind(this), this.SPEED);
+    this.ps = setTimeout(this.move.bind(this), this.SPEED);
   }
 
   move() {
@@ -125,10 +189,10 @@ class Head extends Shape {
     }
 
     this.moveBody(x, y, z);
-    if (this.outside()) kill();
+    if (this.outside()) game.kill();
     apple.checkIfEaten();
     this.checkBody();
-    setTimeout(this.move.bind(this), this.SPEED);
+    this.ps = setTimeout(this.move.bind(this), this.SPEED);
   }
 
   moveBody(x, y, z) {
@@ -149,14 +213,23 @@ class Head extends Shape {
     var newBody = this.newBody;
     this.newBody = null;
     newBody.setPos(x, y, z);
-    scene.add(newBody.shape);
+    game.scene.add(newBody.shape);
     this.tail.next = newBody;
     this.tail = newBody;
   }
 
   checkBody() {
     for (var body = this.next; body; body = body.next) {
-      if (body.overlap(head)) kill();
+      if (body.overlap(head)) game.kill();
+    }
+  }
+
+  togglePause() {
+    if (this.ps) {
+      clearTimeout(this.ps);
+      this.ps = null;
+    } else {
+      this.move();
     }
   }
 
@@ -176,10 +249,10 @@ class Apple extends Shape {
   constructor(x, y, z) {
     super();
     this.shape = new THREE.Mesh(sphereGeo, appleMaterial);
-    scene.add(this.shape);
-    this.x = (x === undefined ? Math.floor(Math.random() * (xLimit + 1)) : x);
-    this.y = (y === undefined ? Math.floor(Math.random() * (yLimit + 1)) : y);
-    this.z = (z === undefined ? -1 * Math.floor(Math.random() * (zLimit + 1)) : z);
+    game.scene.add(this.shape);
+    this.x = (x === undefined ? Math.floor(Math.random() * (game.xLimit + 1)) : x);
+    this.y = (y === undefined ? Math.floor(Math.random() * (game.yLimit + 1)) : y);
+    this.z = (z === undefined ? -1 * Math.floor(Math.random() * (game.zLimit + 1)) : z);
     this.drawCalibration();
   }
 
@@ -188,15 +261,16 @@ class Apple extends Shape {
   }
 
   pick() {
-    scene.remove(this.shape);
+    game.scene.remove(this.shape);
     this.removeCalibration();
     apple = new Apple;
     head.newBody = new Body;
+    document.getElementById('score').innerText = ++head.score;
   }
 
   removeCalibration() {
-    scene.remove(this.zCalibLine);
-    scene.remove(this.xCalibLine);
+    game.scene.remove(this.zCalibLine);
+    game.scene.remove(this.xCalibLine);
   }
 
   drawCalibration() {
@@ -207,18 +281,18 @@ class Apple extends Shape {
     var lineGeo = new THREE.Geometry();
     lineGeo.vertices = [
       new THREE.Vector3(this.x, this.y, 0),
-      new THREE.Vector3(this.x, this.y, -1 * zLimit),
+      new THREE.Vector3(this.x, this.y, -1 * game.zLimit),
     ];
     this.zCalibLine = new THREE.Line(lineGeo, lineMaterial);
-    scene.add(this.zCalibLine);
+    game.scene.add(this.zCalibLine);
 
     var lineGeo = new THREE.Geometry();
     lineGeo.vertices = [
       new THREE.Vector3(0, this.y, this.z),
-      new THREE.Vector3(xLimit, this.y, this.z),
+      new THREE.Vector3(game.xLimit, this.y, this.z),
     ];
     this.xCalibLine = new THREE.Line(lineGeo, lineMaterial);
-    scene.add(this.xCalibLine);
+    game.scene.add(this.xCalibLine);
   }
 
 }
@@ -232,64 +306,15 @@ $(window).on('keydown', e => {
     head.direction = 'backward';
   } else if (e.keyCode === 39 && head.direction !== 'left') {
     head.direction = 'right';
-  } else if (e.keyCode === 87 && head.direction !== 'down') {
+  } else if (e.keyCode === 87 && head.direction !== 'down') {  // w key
     head.direction = 'up';
-  } else if (e.keyCode === 83 && head.direction !== 'up') {
+  } else if (e.keyCode === 83 && head.direction !== 'up') {  // s key
     head.direction = 'down';
+  } else if (e.keyCode === 32) {  // spacebar
+    head.togglePause();
   }
 });
 
-
+var game = new Game(7, 5, 10);
 var head = new Head;
 var apple = new Apple(3, 0, 0);
-
-function drawLines(vectors) {
-
-  var lineMaterial = new THREE.LineBasicMaterial({
-    color: '#ffffff'
-  });
-
-  var lineGeo = new THREE.Geometry();
-  lineGeo.vertices = vectors;
-
-
-  var line = new THREE.Line(lineGeo, lineMaterial);
-  scene.add(line);
-}
-
-drawLines([
-  new THREE.Vector3(0, 0, 0),
-  new THREE.Vector3(xLimit, 0, 0),
-  new THREE.Vector3(xLimit, 0, -1 * zLimit),
-  new THREE.Vector3(0, 0, -1 * zLimit),
-  new THREE.Vector3(0, 0, 0)
-]);
-
-drawLines([
-  new THREE.Vector3(0, yLimit, 0),
-  new THREE.Vector3(xLimit, yLimit, 0),
-  new THREE.Vector3(xLimit, yLimit, -1 * zLimit),
-  new THREE.Vector3(0, yLimit, -1 * zLimit),
-  new THREE.Vector3(0, yLimit, 0)
-]);
-
-drawLines([
-  new THREE.Vector3(0, 0, 0),
-  new THREE.Vector3(0, yLimit, 0),
-]);
-
-drawLines([
-  new THREE.Vector3(xLimit, 0, 0),
-  new THREE.Vector3(xLimit, yLimit, 0),
-]);
-
-drawLines([
-  new THREE.Vector3(0, 0, -1 * zLimit),
-  new THREE.Vector3(0, yLimit, -1 * zLimit),
-]);
-
-drawLines([
-  new THREE.Vector3(xLimit, 0, -1 * zLimit),
-  new THREE.Vector3(xLimit, yLimit, -1 * zLimit),
-]);
-
