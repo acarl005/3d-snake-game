@@ -46,7 +46,7 @@ scene.add(lights[1]);
 scene.add(lights[2]);
 
 camera.position.z = 15;
-camera.position.y = 5;
+camera.position.y = 6;
 camera.position.x = 6;
 camera.rotateX(-0.15);
 camera.rotateY(0.15);
@@ -57,9 +57,9 @@ function render() {
 }
 render();
 
-var xlimit = 7;
-var ylimit = 5;
-var zlimit = 10;
+var xLimit = 7;
+var yLimit = 5;
+var zLimit = 10;
 
 function kill() {
   renderer.render(scene, camera);
@@ -84,11 +84,11 @@ class Shape {
   }
 
   outside() {
-    return this.x > xlimit ||
+    return this.x > xLimit ||
            this.x < 0 ||
-           this.y > ylimit ||
+           this.y > yLimit ||
            this.y < 0 ||
-           this.z < -1 * zlimit ||
+           this.z < -1 * zLimit ||
            this.z > 0;
   }
 
@@ -123,13 +123,9 @@ class Head extends Shape {
       case "up": this.y++; break;
       case "down": this.y--; break;
     }
-    console.log({
-      x: this.x,
-      y: this.y,
-      z: this.z,
-    });
-    if (this.outside()) kill();
+
     this.moveBody(x, y, z);
+    if (this.outside()) kill();
     apple.checkIfEaten();
     this.checkBody();
     setTimeout(this.move.bind(this), this.SPEED);
@@ -181,9 +177,10 @@ class Apple extends Shape {
     super();
     this.shape = new THREE.Mesh(sphereGeo, appleMaterial);
     scene.add(this.shape);
-    this.x = (x === undefined ? Math.floor(Math.random() * (xlimit + 1)) : x);
-    this.y = (y === undefined ? 0 : y);
-    this.z = (z === undefined ? -1 * Math.floor(Math.random() * (zlimit + 1)) : z);
+    this.x = (x === undefined ? Math.floor(Math.random() * (xLimit + 1)) : x);
+    this.y = (y === undefined ? Math.floor(Math.random() * (yLimit + 1)) : y);
+    this.z = (z === undefined ? -1 * Math.floor(Math.random() * (zLimit + 1)) : z);
+    this.drawCalibration();
   }
 
   checkIfEaten() {
@@ -192,8 +189,36 @@ class Apple extends Shape {
 
   pick() {
     scene.remove(this.shape);
+    this.removeCalibration();
     apple = new Apple;
     head.newBody = new Body;
+  }
+
+  removeCalibration() {
+    scene.remove(this.zCalibLine);
+    scene.remove(this.xCalibLine);
+  }
+
+  drawCalibration() {
+    var lineMaterial = new THREE.LineBasicMaterial({
+      color: 'red'
+    });
+
+    var lineGeo = new THREE.Geometry();
+    lineGeo.vertices = [
+      new THREE.Vector3(this.x, this.y, 0),
+      new THREE.Vector3(this.x, this.y, -1 * zLimit),
+    ];
+    this.zCalibLine = new THREE.Line(lineGeo, lineMaterial);
+    scene.add(this.zCalibLine);
+
+    var lineGeo = new THREE.Geometry();
+    lineGeo.vertices = [
+      new THREE.Vector3(0, this.y, this.z),
+      new THREE.Vector3(xLimit, this.y, this.z),
+    ];
+    this.xCalibLine = new THREE.Line(lineGeo, lineMaterial);
+    scene.add(this.xCalibLine);
   }
 
 }
@@ -218,18 +243,53 @@ $(window).on('keydown', e => {
 var head = new Head;
 var apple = new Apple(3, 0, 0);
 
-var material = new THREE.LineBasicMaterial({
-  color: 0xffffff
-});
+function drawLines(vectors) {
 
-var geometry = new THREE.Geometry();
-geometry.vertices.push(
+  var lineMaterial = new THREE.LineBasicMaterial({
+    color: '#ffffff'
+  });
+
+  var lineGeo = new THREE.Geometry();
+  lineGeo.vertices = vectors;
+
+
+  var line = new THREE.Line(lineGeo, lineMaterial);
+  scene.add(line);
+}
+
+drawLines([
   new THREE.Vector3(0, 0, 0),
-  new THREE.Vector3(xlimit, 0, 0),
-  new THREE.Vector3(xlimit, 0, -1 * zlimit),
-  new THREE.Vector3(0, 0, -1 * zlimit),
+  new THREE.Vector3(xLimit, 0, 0),
+  new THREE.Vector3(xLimit, 0, -1 * zLimit),
+  new THREE.Vector3(0, 0, -1 * zLimit),
   new THREE.Vector3(0, 0, 0)
-);
+]);
 
-var line = new THREE.Line( geometry, material );
-scene.add( line );
+drawLines([
+  new THREE.Vector3(0, yLimit, 0),
+  new THREE.Vector3(xLimit, yLimit, 0),
+  new THREE.Vector3(xLimit, yLimit, -1 * zLimit),
+  new THREE.Vector3(0, yLimit, -1 * zLimit),
+  new THREE.Vector3(0, yLimit, 0)
+]);
+
+drawLines([
+  new THREE.Vector3(0, 0, 0),
+  new THREE.Vector3(0, yLimit, 0),
+]);
+
+drawLines([
+  new THREE.Vector3(xLimit, 0, 0),
+  new THREE.Vector3(xLimit, yLimit, 0),
+]);
+
+drawLines([
+  new THREE.Vector3(0, 0, -1 * zLimit),
+  new THREE.Vector3(0, yLimit, -1 * zLimit),
+]);
+
+drawLines([
+  new THREE.Vector3(xLimit, 0, -1 * zLimit),
+  new THREE.Vector3(xLimit, yLimit, -1 * zLimit),
+]);
+
